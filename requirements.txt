@@ -1,3 +1,5 @@
 altair
 pandas
 streamlit
+pip install streamlit torch torchvision
+pip install git+https://github.com/ultralytics/yolov5
