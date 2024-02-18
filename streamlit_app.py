@@ -1,40 +1,37 @@
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
+import torch
+from PIL import Image
+from torchvision.transforms import functional as F
+from yolov5 import YOLOv5
 
-"""
-# Welcome to Streamlits!
+# Load the YOLO model
+model = YOLOv5("yolov5s", classes=2)  # "yolov5s" is the smallest model. Adjust model size as needed.
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+def detect_vehicles(image):
+    # Convert the PIL image to a Torch tensor
+    image = F.to_tensor(image).unsqueeze(0)
+    # Perform inference
+    results = model(image)
+    # Filter detections for vehicles (cars, trucks, etc.)
+    results = results.pandas().xyxy[0]  # Results as a DataFrame
+    vehicle_classes = ['car', 'motorcycle', 'bus', 'truck']  # Define vehicle classes based on your YOLO model
+    vehicles = results[results['name'].isin(vehicle_classes)]
+    return vehicles
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+def main():
+    st.title("Vehicle Detection App")
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption='Uploaded Image', use_column_width=True)
+        st.write("")
+        st.write("Detecting vehicles...")
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+        vehicles = detect_vehicles(image)
+        vehicle_count = len(vehicles)
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+        st.write(f"Detected {vehicle_count} vehicles in the image.")
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
-
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+if __name__ == "__main__":
+    main()
